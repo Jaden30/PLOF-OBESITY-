@@ -1,0 +1,18 @@
+#!/bin/bash
+# Building a star index file
+
+
+#PBS -N starIndex
+#PBS -l walltime=06:00:00
+#PBS -l nodes=1:ppn=7
+#PBS -l vmem=60gb
+#PBS -m bea
+#PBS -M oiao1@le.ac.uk
+
+
+module load star/2.7.1a
+
+STAR --runThreadN 6 --runMode genomeGenerate --genomeDir /scratch/spectre/o/oiao1/genome --genomeFastaFiles /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa --sjdbGTFfile /scratch/spectre/o/oiao1/genome/gencode.v29.annotation.gtf 
+
+
+

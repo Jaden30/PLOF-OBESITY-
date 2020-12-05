@@ -1,0 +1,118 @@
+#!/bin/bash
+# Variants generating
+
+
+#PBS -N Generating variants
+#PBS -l walltime=20:00:00
+#PBS -l nodes=1:ppn=9
+#PBS -l vmem=200gb
+#PBS -m bea
+#PBS -M oiao1@le.ac.uk
+
+module load gatk/4.1.5.0   
+
+
+for i in /scratch/spectre/o/oiao1/MAP95640/*Aligned.sortedByCoord.out.bam 
+do 
+bam=`basename ${i}`
+echo "The bam file is:"$bam
+    j=$(basename ${i} Aligned.sortedByCoord.out.bam)
+echo "The matching output is:" ${j}
+    gatk  MarkDuplicates -INPUT /scratch/spectre/o/oiao1/MAP95640/$bam \
+--OUTPUT /scratch/spectre/o/oiao1/VAR95640/${j}_mkdp.bam \
+--METRICS_FILE /scratch/spectre/o/oiao1/VAR95640/${j}_dupmet.txt \
+--REMOVE_DUPLICATES false  \
+--CREATE_INDEX true \
+--VALIDATION_STRINGENCY LENIENT \
+--java-options '-Xmx8g -Djava.io.tmpdir=hpcOutput' 
+done
+
+
+for i in /scratch/spectre/o/oiao1/VAR95640/*_mkdp.bam 
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam
+    j=$(basename ${i} _mkdp.bam)
+echo "The matching output is:" ${j}
+    gatk SplitNCigarReads -I /scratch/spectre/o/oiao1/VAR95640/$bam \
+-O /scratch/spectre/o/oiao1/VAR95640/${j}_mkdp_spc.bam \
+-R /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa \
+--java-options '-Xmx8g -Djava.io.tmpdir=hpcOutput' 
+done
+
+for i in /scratch/spectre/o/oiao1/VAR95640/*_mkdp_spc.bam 
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam
+    j=$(basename ${i} _mkdp_spc.bam)
+echo "The matching output is:" ${j}
+    gatk AddOrReplaceReadGroups -I /scratch/spectre/o/oiao1/VAR95640/$bam \
+-O /scratch/spectre/o/oiao1/VAR95640/${j}_mkdp_spc_RG.bam \
+--RGLB GSE95640 \
+--RGSM $bam \
+--RGPL ILLUMINA \
+ --RGPU unit1 \
+
+done
+
+
+for i in /scratch/spectre/o/oiao1/VAR95640/*_mkdp_spc_RG.bam 
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam
+    j=$(basename ${i} _mkdp_spc_RG.bam)
+echo "The matching output is:" ${j}
+    gatk BaseRecalibrator -I /scratch/spectre/o/oiao/VAR95640/$bam \
+-O /scratch/spectre/o/oiao1/VAR95640/${j}_bqsr.table \
+-R /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa \
+--known-sites  /scratch/spectre/o/oiao1/resources_broad_hg38_v0_Homo_sapiens_assembly38.known_indels.vcf.gz  \
+--known-sites /scratch/spectre/o/oiao1/resources_broad_hg38_v0_Mills_and_1000G_gold_standard.indels.hg38.vcf.gz \
+--java-options '-Xmx8g -Djava.io.tmpdir=hpcOutput'
+done 
+
+for i in /scratch/spectre/o/oiao1/VAR95640/*_mkdp_spc_RG.bam 
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam
+    j=$(basename ${i} _mkdp_spc_RG.bam)
+echo "The matching output is:" ${j}
+   gatk ApplyBQSR -I /scratch/spectre/o/oiao1/VAR95640/$bam \
+-O /scratch/spectre/o/oiao1/VAR95640/${j}_recal.bam \
+-R /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa \
+--bqsr-recal-file /scratch/spectre/o/oiao1/VAR95640/${j}_bqsr.table \
+--java-options '-Xmx8g -Djava.io.tmpdir=hpcOutput'
+
+done
+
+for i in /scratch/spectre/o/oiao1/VAR95640/*_recal.bam 
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam
+    j=$(basename ${i} _recal.bam)
+echo "The matching output is:" ${j}
+    gatk HaplotypeCaller -I /scratch/spectre/o/oiao1/VAR95640/$bam \
+-O /scratch/spectre/o/oiao1/VAR95640/VCF/${j}_HC.vcf.gz \
+-R /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa \
+-stand-call-conf 20.0 \
+--java-options '-Xmx8g -Djava.io.tmpdir=hpcOutput'
+done
+
+for i in /scratch/spectre/o/oiao1/VAR95640/VCF/*_HC.vcf.gz
+do 
+bam=`basename ${i}`
+echo "The file is:"$bam 
+    j=$(basename ${i} _HC.vcf.gz)
+echo "The matching output is:" ${j}
+    gatk VariantFiltration -V /scratch/spectre/o/oiao1/VAR95640/VCF/$bam  \
+-O  /scratch/spectre/o/oiao1/VAR95640/VCF/${j}_HC.filt.vcf.gz \
+-R /scratch/spectre/o/oiao1/genome/GRCh38.primary_assembly.genome.fa \
+-filter "QD < 2.0" \
+--filter-name "filterQD2" \
+-filter "QUAL < 30.0" \
+--filter-name "QUAL30" \
+-filter "FS > 60.0" \
+ --filter-name "filterFS60" \
+
+done
+
+

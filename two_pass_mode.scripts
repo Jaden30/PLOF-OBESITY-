@@ -1,0 +1,24 @@
+#!/bin/bash
+# Mapping and aligning
+
+
+#PBS -N Mapping
+#PBS -l walltime=24:00:00
+#PBS -l nodes=1:ppn=9
+#PBS -l vmem=200gb
+#PBS -m bea
+#PBS -M oiao1@le.ac.uk
+
+
+
+module load star/2.7.1a
+
+for  i in  /scratch/spectre/o/oiao1/GSE126848/*.fastq 
+
+do j=$(basename ${i} .fastq)
+STAR  --genomeDir /scratch/spectre/o/oiao1/genome --runThreadN 8 \
+ --readFilesIn ${i} --twopassMode Basic --outSAMtype BAM SortedByCoordinate --outSAMunmapped  Within  --outFileNamePrefix /scratch/spectre/o/oiao1/MAP6848/${j} --sjdbGTFfile /scratch/spectre/o/oiao1/genome/gencode.v29.annotation.gtf
+
+done
+
+
